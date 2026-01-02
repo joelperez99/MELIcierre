@@ -11,14 +11,9 @@ import streamlit as st
 # Helpers de texto
 # -----------------------------
 def fix_mojibake(text: str) -> str:
-    """
-    Intenta corregir textos con mala decodificación tipo:
-    'FÃ³rmula' -> 'Fórmula', 'BebÃ©' -> 'Bebé'
-    """
     if text is None:
         return ""
     s = str(text)
-    # Heurística: si aparecen marcadores típicos de mojibake, intenta latin1->utf8
     if any(x in s for x in ["Ã", "Â", "�"]):
         try:
             return s.encode("latin1").decode("utf-8")
@@ -27,48 +22,30 @@ def fix_mojibake(text: str) -> str:
     return s
 
 def strip_accents_upper(text: str) -> str:
-    """
-    Corrige mojibake, quita acentos y pone en MAYÚSCULAS.
-    """
     s = fix_mojibake(text)
     s = s.strip()
-    # Normaliza unicode y elimina diacríticos
     s_norm = unicodedata.normalize("NFD", s)
     s_no_accents = "".join(ch for ch in s_norm if unicodedata.category(ch) != "Mn")
     return s_no_accents.upper()
 
 def normalize_key(text: str) -> str:
-    """
-    Normalización para comparar títulos de productos:
-    - corrige mojibake
-    - mayúsculas sin acentos
-    - espacios colapsados
-    """
     s = strip_accents_upper(text)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def parse_gramaje_grams(text: str):
-    """
-    Extrae gramaje en gramos desde un texto.
-    Soporta ejemplos: 340gr, 800g, 360 GR, 1.5kg, 1,5 kg, 1500gr, etc.
-    Regresa int o None.
-    """
     if text is None:
         return None
     s = strip_accents_upper(text)
 
-    # 1) Buscar KG (ej 1.5KG, 1,5 KG)
     m = re.search(r"(\d+(?:[.,]\d+)?)\s*KG\b", s)
     if m:
         val = m.group(1).replace(",", ".")
         try:
-            grams = int(round(float(val) * 1000))
-            return grams
+            return int(round(float(val) * 1000))
         except Exception:
             pass
 
-    # 2) Buscar GR / G (ej 800GR, 800 G)
     m = re.search(r"\b(\d{2,5})\s*(GR|G)\b", s)
     if m:
         try:
@@ -79,13 +56,10 @@ def parse_gramaje_grams(text: str):
     return None
 
 def safe_int(x, default=0):
-    """
-    Convierte a int de forma segura (acepta strings con comas, espacios).
-    """
     if x is None or x == "":
         return default
     s = str(x).strip()
-    s = s.replace(",", "")  # por si vienen miles
+    s = s.replace(",", "")
     try:
         return int(float(s))
     except Exception:
@@ -130,7 +104,6 @@ EQUIV_LIST = [
      1, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
     ("Lechelack Leche Entera De Cabra En Polvo 340gr 12 Pack",
      12, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
-    # Ejemplo que pusiste al inicio:
     ("Fórmula Crecelac Bebé 0-12 Meses 1500gr",
      1, "7501468141043", "CRECELAC 0-12 M 1.5 KG"),
 ]
@@ -143,13 +116,10 @@ EQUIV_MAP = {normalize_key(k): (mult, upc, desc) for (k, mult, upc, desc) in EQU
 def read_uploaded_file(uploaded_file, has_header=True, sep_guess="auto"):
     name = uploaded_file.name.lower()
     if name.endswith(".xlsx") or name.endswith(".xls"):
-        # Excel
         df = pd.read_excel(uploaded_file, dtype=str, header=0 if has_header else None)
         return df
     else:
-        # CSV / TXT
         raw = uploaded_file.getvalue()
-        # Intentar detectar encoding básico
         for enc in ["utf-8-sig", "utf-8", "latin1"]:
             try:
                 text = raw.decode(enc)
@@ -157,11 +127,9 @@ def read_uploaded_file(uploaded_file, has_header=True, sep_guess="auto"):
             except Exception:
                 text = None
         if text is None:
-            # fallback
             text = raw.decode("latin1", errors="replace")
 
         if sep_guess == "auto":
-            # Heurística simple
             sep = "," if text.count(",") >= text.count(";") else ";"
         else:
             sep = sep_guess
@@ -173,48 +141,38 @@ def read_uploaded_file(uploaded_file, has_header=True, sep_guess="auto"):
 # Procesamiento principal
 # -----------------------------
 def process_df(df: pd.DataFrame):
-    # Columnas por letra (posicional):
-    # F = 6ta col -> index 5
-    # G = 7ma col -> index 6
-    # AH = 34ta col -> index 33
-    # AI = 35ta col -> index 34
+    # Por letra Excel:
+    # F = índice 5 (UNIDADES)
+    # S = índice 18 (TITULO)
+    # AH = índice 33
+    # AI = índice 34
     required_max_index = 34
     if df.shape[1] <= required_max_index:
-        raise ValueError(
-            f"El archivo tiene {df.shape[1]} columnas, pero necesito al menos 35 (hasta la columna AI)."
-        )
+        raise ValueError(f"El archivo tiene {df.shape[1]} columnas, pero necesito al menos 35 (hasta la columna AI).")
 
-    # Asegurar strings
     df = df.copy()
     for c in df.columns:
         df[c] = df[c].astype(str).fillna("")
 
-    # AH y AI -> mayusculas sin acentos (y corrige mojibake)
     col_AH = df.columns[33]
     col_AI = df.columns[34]
     df[col_AH] = df[col_AH].apply(strip_accents_upper)
     df[col_AI] = df[col_AI].apply(strip_accents_upper)
 
-    # F y G
-    col_F = df.columns[5]
-    col_G = df.columns[6]
+    col_units = df.columns[5]   # F
+    col_title = df.columns[18]  # S
 
-    # Nuevas columnas
-    cantidad_out = []
-    upc_out = []
-    desc_out = []
-    gramaje_out = []
+    cantidad_out, upc_out, desc_out, gramaje_out = [], [], [], []
 
     for _, row in df.iterrows():
-        title = row[col_F]
-        units_sold = safe_int(row[col_G], default=0)
+        title = row[col_title]
+        units_sold = safe_int(row[col_units], default=0)
 
         key = normalize_key(title)
         mult, upc, desc = EQUIV_MAP.get(key, (1, "", ""))
 
         cantidad = units_sold * mult
 
-        # Gramaje: preferimos extraer del título; si no, de la descripción
         grams = parse_gramaje_grams(title)
         if grams is None and desc:
             grams = parse_gramaje_grams(desc)
@@ -240,14 +198,14 @@ st.title("Procesador de Excel/CSV — Normalización + Packs + UPC/Descripción 
 with st.expander("Qué hace este procesador", expanded=True):
     st.markdown(
         """
-- **AH** y **AI** → **MAYÚSCULAS sin acentos** (y corrige textos raros tipo `FÃ³rmula`, `BebÃ©`, etc.)
-- **F** = Título del producto, **G** = Unidades vendidas (del listing)
-- Detecta si el producto es **individual / 2 pack / 6 pack / 12 pack**
+- **AH** y **AI** → **MAYÚSCULAS sin acentos** (corrige `FÃ³rmula`, `BebÃ©`, etc.)
+- **F** = Unidades vendidas | **S** = Título del producto
+- Detecta **pack 1/2/6/12** según equivalencias
 - Crea:
-  - `Cantidad` = **G × multiplicador_pack**
+  - `Cantidad` = **F × multiplicador_pack**
   - `UPC`
   - `Descripcion`
-  - `Gramaje` (en **gramos**, ejemplo `1.5kg` → `1500`)
+  - `Gramaje` (en gramos; `1.5kg` → `1500`)
         """
     )
 
@@ -261,16 +219,13 @@ with col3:
     show_mapping = st.checkbox("Mostrar equivalencias cargadas", value=False)
 
 if show_mapping:
-    st.write("Equivalencias (normalizadas) cargadas:", len(EQUIV_MAP))
+    st.write("Equivalencias cargadas:", len(EQUIV_MAP))
     st.dataframe(
         pd.DataFrame(
-            [
-                {"Titulo (original)": k, "Multiplicador": v[0], "UPC": v[1], "Descripcion": v[2]}
-                for (k, v) in zip([x[0] for x in EQUIV_LIST], [EQUIV_MAP[normalize_key(x[0])] for x in EQUIV_LIST])
-            ]
+            [{"Titulo": x[0], "Multiplicador": x[1], "UPC": x[2], "Descripcion": x[3]} for x in EQUIV_LIST]
         ),
         use_container_width=True,
-        height=250,
+        height=280,
     )
 
 if uploaded:
@@ -292,7 +247,7 @@ if uploaded:
             mime="text/csv",
         )
 
-        # Descarga Excel (intenta xlsxwriter u openpyxl; si falla, no rompe la app)
+        # Descarga Excel
         xlsx_buffer = io.BytesIO()
         xlsx_ok = True
         try:
@@ -316,19 +271,19 @@ if uploaded:
         else:
             st.warning("No pude generar .xlsx en este entorno. Usa la descarga CSV (sí funciona).")
 
-        # Reporte de no encontrados
+        # Diagnóstico de no mapeados (usa S ahora)
         st.subheader("Diagnóstico: productos no mapeados")
-        col_F = df_in.columns[5]
-        keys = df_in[col_F].astype(str).apply(normalize_key)
+        col_title = df_in.columns[18]  # S
+        keys = df_in[col_title].astype(str).apply(normalize_key)
         not_found_mask = ~keys.isin(EQUIV_MAP.keys())
-        not_found = df_in.loc[not_found_mask, col_F].astype(str)
+        not_found = df_in.loc[not_found_mask, col_title].astype(str)
 
         if len(not_found) == 0:
-            st.success("Todos los productos en columna F se mapearon correctamente ✅")
+            st.success("Todos los productos en columna S se mapearon correctamente ✅")
         else:
             st.warning(f"Se encontraron {len(not_found):,} filas con productos NO mapeados (se deja UPC/Descripción en blanco).")
             st.dataframe(
-                not_found.value_counts().reset_index().rename(columns={"index": "Producto (F)", col_F: "Conteo"}),
+                not_found.value_counts().reset_index().rename(columns={"index": "Producto (S)", col_title: "Conteo"}),
                 use_container_width=True,
                 height=300,
             )
