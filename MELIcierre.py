@@ -11,6 +11,10 @@ import streamlit as st
 # Helpers de texto
 # -----------------------------
 def fix_mojibake(text: str) -> str:
+    """
+    Intenta corregir textos con mala decodificación tipo:
+    'FÃ³rmula' -> 'Fórmula', 'BebÃ©' -> 'Bebé'
+    """
     if text is None:
         return ""
     s = str(text)
@@ -22,6 +26,9 @@ def fix_mojibake(text: str) -> str:
     return s
 
 def strip_accents_upper(text: str) -> str:
+    """
+    Corrige mojibake, quita acentos y pone en MAYÚSCULAS.
+    """
     s = fix_mojibake(text)
     s = s.strip()
     s_norm = unicodedata.normalize("NFD", s)
@@ -29,15 +36,27 @@ def strip_accents_upper(text: str) -> str:
     return s_no_accents.upper()
 
 def normalize_key(text: str) -> str:
+    """
+    Normalización para comparar títulos de productos:
+    - corrige mojibake
+    - mayúsculas sin acentos
+    - espacios colapsados
+    """
     s = strip_accents_upper(text)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def parse_gramaje_grams(text: str):
+    """
+    Extrae gramaje en gramos desde un texto.
+    Soporta: 340gr, 800g, 360 GR, 1.5kg, 1,5 kg, etc.
+    Retorna int (gramos) o None.
+    """
     if text is None:
         return None
     s = strip_accents_upper(text)
 
+    # KG
     m = re.search(r"(\d+(?:[.,]\d+)?)\s*KG\b", s)
     if m:
         val = m.group(1).replace(",", ".")
@@ -46,6 +65,7 @@ def parse_gramaje_grams(text: str):
         except Exception:
             pass
 
+    # GR o G
     m = re.search(r"\b(\d{2,5})\s*(GR|G)\b", s)
     if m:
         try:
@@ -56,6 +76,9 @@ def parse_gramaje_grams(text: str):
     return None
 
 def safe_int(x, default=0):
+    """
+    Convierte a int de forma segura.
+    """
     if x is None or x == "":
         return default
     s = str(x).strip()
@@ -66,44 +89,60 @@ def safe_int(x, default=0):
         return default
 
 # -----------------------------
-# Mapeo de equivalencias
-# Key: titulo (normalizado) -> (multiplicador_pack, upc, descripcion)
+# Equivalencias (S -> pack/upc/desc)
 # -----------------------------
 EQUIV_LIST = [
     ("LecheLak - Leche de Cabra en Polvo 340gr La Mejor Opción Para Toda la Familia Calidad y Frescura en Cada Porción",
      1, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
+
     ("6 Pack Fórmula Crecelac Bebé 0-12 Meses 800gr",
      6, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+
     ("6 Pack Fórmula Crecelac Firstep 1-3 Años 1500gr",
      6, "7501468140947", "CRECELAC FIRSTEP 1-3 AÑOS 1.5 KG"),
+
     ("6 Pack Fórmula Crecelac Firstep 1-3 Años 800gr",
      6, "7501468148301", "CRECELAC FIRSTEP 1-3 AÑOS 800 GR"),
+
     ("LecheLak - Leche de Cabra en Polvo 340gr La Mejor Opción Para Toda la Familia Calidad y Frescura en Cada Porción - 12 pack",
      12, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
+
     ("FÃ³rmula Crecelac Firstep 1-3 AÃ±os 360gr",
      1, "7501468148103", "CRECELAC FIRSTEP 1-3 AÑOS 360 GR"),
+
     ("FÃ³rmula Crecelac Firstep 1-3 AÃ±os 800gr",
      1, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+
     ("FÃ³rmula Crecelac BebÃ© 0-12 Meses 400gr",
      1, "7501468145508", "CRECELAC 0-12 M 400 GR"),
+
     ("12 Pack Crecelac BebÃ© 0-12 Meses 400gr",
      12, "7501468145508", "CRECELAC 0-12 M 400 GR"),
+
     ("Fórmula Crecelac Firstep 1-3 Años 1500gr",
      1, "7501468140947", "CRECELAC FIRSTEP 1-3 AÑOS 1.5 KG"),
+
     ("Crecelac 2 Pack Fórmula Para Lactante Firstep 1-3 Años 800gr Natural",
      2, "7501468148301", "CRECELAC FIRSTEP 1-3 AÑOS 800 GR"),
+
     ("Crecelac 6 Pack Fórmula Para Lactante Firstep 1-3 Años 1500g Natural",
      6, "7501468140947", "CRECELAC FIRSTEP 1-3 AÑOS 1.5 KG"),
+
     ("Dm Mexicana Fórmula Crecelac Bebé 0-12 Meses 400gr  Natural",
      1, "7501468145508", "CRECELAC 0-12 M 400 GR"),
+
     ("Dm Mexicana Fórmula Crecelac Firstep 1-3 Años 800gr  Natural",
      1, "7501468148301", "CRECELAC FIRSTEP 1-3 AÑOS 800 GR"),
+
     ("Leche En Polvo Crecelac Bebé Natural Para 0 A 1 Año 800g 6 Latas",
      6, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+
     ("Leche Entera De Cabra En Polvo 340gr Fácil Digestión 2 Pack",
      1, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
+
     ("Lechelack Leche Entera De Cabra En Polvo 340gr 12 Pack",
      12, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"),
+
     ("Fórmula Crecelac Bebé 0-12 Meses 1500gr",
      1, "7501468141043", "CRECELAC 0-12 M 1.5 KG"),
 ]
@@ -116,33 +155,32 @@ EQUIV_MAP = {normalize_key(k): (mult, upc, desc) for (k, mult, upc, desc) in EQU
 def read_uploaded_file(uploaded_file, has_header=True, sep_guess="auto"):
     name = uploaded_file.name.lower()
     if name.endswith(".xlsx") or name.endswith(".xls"):
-        df = pd.read_excel(uploaded_file, dtype=str, header=0 if has_header else None)
-        return df
+        return pd.read_excel(uploaded_file, dtype=str, header=0 if has_header else None)
+
+    raw = uploaded_file.getvalue()
+    text = None
+    for enc in ["utf-8-sig", "utf-8", "latin1"]:
+        try:
+            text = raw.decode(enc)
+            break
+        except Exception:
+            pass
+    if text is None:
+        text = raw.decode("latin1", errors="replace")
+
+    if sep_guess == "auto":
+        sep = "," if text.count(",") >= text.count(";") else ";"
     else:
-        raw = uploaded_file.getvalue()
-        for enc in ["utf-8-sig", "utf-8", "latin1"]:
-            try:
-                text = raw.decode(enc)
-                break
-            except Exception:
-                text = None
-        if text is None:
-            text = raw.decode("latin1", errors="replace")
+        sep = sep_guess
 
-        if sep_guess == "auto":
-            sep = "," if text.count(",") >= text.count(";") else ";"
-        else:
-            sep = sep_guess
-
-        df = pd.read_csv(io.StringIO(text), sep=sep, dtype=str, header=0 if has_header else None, keep_default_na=False)
-        return df
+    return pd.read_csv(io.StringIO(text), sep=sep, dtype=str, header=0 if has_header else None, keep_default_na=False)
 
 # -----------------------------
 # Procesamiento principal
 # -----------------------------
 def process_df(df: pd.DataFrame):
-    # Por letra Excel:
-    # F = índice 5 (UNIDADES)
+    # Columnas por letra Excel:
+    # G = índice 6  (UNIDADES VENDIDAS)
     # S = índice 18 (TITULO)
     # AH = índice 33
     # AI = índice 34
@@ -154,12 +192,13 @@ def process_df(df: pd.DataFrame):
     for c in df.columns:
         df[c] = df[c].astype(str).fillna("")
 
+    # Normalización AH y AI
     col_AH = df.columns[33]
     col_AI = df.columns[34]
     df[col_AH] = df[col_AH].apply(strip_accents_upper)
     df[col_AI] = df[col_AI].apply(strip_accents_upper)
 
-    col_units = df.columns[5]   # F
+    col_units = df.columns[6]   # G
     col_title = df.columns[18]  # S
 
     cantidad_out, upc_out, desc_out, gramaje_out = [], [], [], []
@@ -171,13 +210,15 @@ def process_df(df: pd.DataFrame):
         key = normalize_key(title)
         mult, upc, desc = EQUIV_MAP.get(key, (1, "", ""))
 
+        # Cantidad real de piezas
         cantidad = units_sold * mult
 
+        # Gramaje (preferir del título)
         grams = parse_gramaje_grams(title)
         if grams is None and desc:
             grams = parse_gramaje_grams(desc)
 
-        cantidad_out.append(cantidad if cantidad != 0 else ("" if units_sold == 0 else cantidad))
+        cantidad_out.append("" if (units_sold == 0 and cantidad == 0) else cantidad)
         upc_out.append(upc)
         desc_out.append(desc)
         gramaje_out.append("" if grams is None else grams)
@@ -198,13 +239,12 @@ st.title("Procesador de Excel/CSV — Normalización + Packs + UPC/Descripción 
 with st.expander("Qué hace este procesador", expanded=True):
     st.markdown(
         """
-- **AH** y **AI** → **MAYÚSCULAS sin acentos** (corrige `FÃ³rmula`, `BebÃ©`, etc.)
-- **F** = Unidades vendidas | **S** = Título del producto
-- Detecta **pack 1/2/6/12** según equivalencias
+- **AH** y **AI** → MAYÚSCULAS sin acentos (corrige `FÃ³rmula`, `BebÃ©`, etc.)
+- **S** = Título del producto | **G** = Unidades vendidas
+- Detecta pack (1/2/6/12) según equivalencias
 - Crea:
-  - `Cantidad` = **F × multiplicador_pack**
-  - `UPC`
-  - `Descripcion`
+  - `Cantidad` = **G × multiplicador_pack**
+  - `UPC`, `Descripcion`
   - `Gramaje` (en gramos; `1.5kg` → `1500`)
         """
     )
@@ -247,7 +287,7 @@ if uploaded:
             mime="text/csv",
         )
 
-        # Descarga Excel
+        # Descarga Excel (preferir xlsxwriter; fallback openpyxl)
         xlsx_buffer = io.BytesIO()
         xlsx_ok = True
         try:
@@ -271,7 +311,7 @@ if uploaded:
         else:
             st.warning("No pude generar .xlsx en este entorno. Usa la descarga CSV (sí funciona).")
 
-        # Diagnóstico de no mapeados (usa S ahora)
+        # Diagnóstico de no mapeados (usa S)
         st.subheader("Diagnóstico: productos no mapeados")
         col_title = df_in.columns[18]  # S
         keys = df_in[col_title].astype(str).apply(normalize_key)
@@ -285,7 +325,7 @@ if uploaded:
             st.dataframe(
                 not_found.value_counts().reset_index().rename(columns={"index": "Producto (S)", col_title: "Conteo"}),
                 use_container_width=True,
-                height=300,
+                height=320,
             )
 
     except Exception as e:
