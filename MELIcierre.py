@@ -145,6 +145,18 @@ EQUIV_LIST = [
 
     ("Fórmula Crecelac Bebé 0-12 Meses 1500gr",
      1, "7501468141043", "CRECELAC 0-12 M 1.5 KG"),
+
+    ("Dm Mexicana Fórmula Crecelac Firstep 1-3 Años 360gr Natural",
+     1, "7501468148103", "CRECELAC FIRSTEP 1-3 AÑOS 360 GR"),
+
+    ("Crecelac 6 Pack Fórmula Para Lactante Firstep 1-3 Años 800gr Natural",
+     6, "7501468148301", "CRECELAC FIRSTEP 1-3 AÑOS 800 GR"),
+
+    ("Crecelac Individual Fórmula Para Lactantes 0-12 Meses 1500gr Natural",
+     1, "7501468141043", "CRECELAC 0-12 M 1.5 KG"),
+
+    ("Crecelac 2 Pack Fórmula Para Lactantes 0-12 Meses 800gr Natural",
+     2, "7501468140442", "CRECELAC 0-12 M 800 GR"),
 ]
 
 EQUIV_MAP = {normalize_key(k): (mult, upc, desc) for (k, mult, upc, desc) in EQUIV_LIST}
