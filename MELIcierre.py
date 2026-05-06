@@ -157,6 +157,13 @@ EQUIV_LIST = [
 
     ("Crecelac 2 Pack Fórmula Para Lactantes 0-12 Meses 800gr Natural",
      2, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+
+    ("Crecelac Fórmula Firstep Para Niños 1 A 3 Años 1.5 Kg Natural",
+     1, "7501468140947", "CRECELAC FIRSTEP 1-3 AÑOS 1.5 KG"),
+
+    ("Dm Mexicana  Fórmula Crecelac Bebé 0-12 Meses 800gr  Natural",
+     1, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+    
 ]
 
 EQUIV_MAP = {normalize_key(k): (mult, upc, desc) for (k, mult, upc, desc) in EQUIV_LIST}
