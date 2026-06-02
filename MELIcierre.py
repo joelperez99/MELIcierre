@@ -163,6 +163,33 @@ EQUIV_LIST = [
 
     ("Dm Mexicana  Fórmula Crecelac Bebé 0-12 Meses 800gr  Natural",
      1, "7501468140442", "CRECELAC 0-12 M 800 GR"),
+
+     ("Crecelac Fórmula Firstep Para Niños 1 A 3 Años 1.5 Kg Sabor Natural",
+     1, "7501468140947", "CRECELAC FIRSTEP 1-3 AÑOS 1.5 KG"),    
+
+     ("Leche De Fórmula En Polvo Crecelac Firstep Sin Gluten Sabor Natural Lata 800g Para 1 A 3 Años",
+     1, "7501468148301", "CRECELAC FIRSTEP 1-3 AÑOS 800 GR"),    
+    
+     ("Crecelac Fórmula Con Hierro Para Bebé 0-12 Meses 1.5 Kg Sabor Sin Sabor",
+     1, "7501468141043", "CRECELAC 0-12 M 1.5 KG"),  
+
+    ("Leche En Polvo Crecelac Firstep Sin Gluten Sabor Natural 360g",
+     1, "7501468148103", "CRECELAC FIRSTEP 1-3 AÑOS 360 GR"), 
+
+    ("Crecelac 6 Pack Fórmula Para Lactantes 0-12 Meses 800gr Natural",
+     6, "7501468140442", "CRECELAC 0-12 M 800 GR"), 
+
+    ("Leche De Fórmula Crecelac Bebé En Polvo 400g Sabor Natural Para 0 A 1 Año",
+     1, "7501468145508", "CRECELAC 0-12 M 400 GR"), 
+
+    ("Crecelac 6 Pack Fórmula Para Lactantes 0-12 Meses 1500gr Natural",
+     6, "7501468141043", "CRECELAC 0-12 M 1.5 KG"), 
+
+    ("Leche Entera De Cabra En Polvo 340gr Fácil Digestión",
+     1, "7501468144501", "LECHELAK LECHE DE CABRA 340 G"), 
+
+    ("Leche De Fórmula En Polvo D-m Mexicana Crecelac Bebé Sabor Natural En Lata De 1 De 800g - 0 Meses A 1 Años",
+     1, "7501468140442", "CRECELAC 0-12 M 800 GR"), 
     
 ]
 
